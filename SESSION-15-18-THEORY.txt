@@ -1,0 +1,952 @@
+# Data Warehousing, Data Lakes, ETL, ELT and Apache Airflow 
+
+
+# 1. Introduction to Data Warehousing
+
+// What is a Data Warehouse?
+
+A Data Warehouse (DW) is a centralized system used to store processed, structured, historical data for reporting and business analysis.
+
+// Simple example
+
+A company has data from:
+
+* Sales application
+* Customer application
+* Payment system
+* HR system
+
+The data can be collected and transformed into a Data Warehouse.
+
+```text
+Sales DB ───────┐
+Customer DB ────┤
+Payment DB ─────┼──> ETL ──> Data Warehouse ──> Reports
+HR DB ──────────┘
+```
+
+// Main purpose
+
+A Data Warehouse is mainly used for:
+
+* Reporting
+* Business Intelligence
+* Dashboards
+* Historical analysis
+* Decision support
+
+// Characteristics
+
+| Feature        | Data Warehouse                              
+
+| Data           | Structured                                  |
+| Data condition | Cleaned/processed                           |
+| Main purpose   | Analytics                                   |
+| Schema         | Defined                                     |
+| Users          | Analysts, managers, BI teams                |
+| Examples       | Snowflake, Amazon Redshift, Google BigQuery |
+
+
+# 2. Introduction to Data Lakes
+
+// What is a Data Lake?
+
+A Data Lake is a centralized storage system that stores raw data in its original format.
+
+It can store:
+
+* CSV
+* JSON
+* XML
+* Images
+* Videos
+* Logs
+* Parquet
+* Database dumps
+
+// Simple example
+
+```text
+Customer DB ──────┐
+Sales CSV ────────┤
+Application JSON ─┤
+Server Logs ──────┼──> Data Lake
+Images ───────────┘
+```
+
+The data does not necessarily have to be cleaned before storing it.
+
+// Data Lake vs Data Warehouse
+
+| Data Lake                  | Data Warehouse     |
+
+| Raw data                   | Processed data     |
+| Structured + unstructured  | Mostly structured  |
+| Flexible schema            | Defined schema     |
+| Usually cheaper storage    | More expensive     |
+| Data scientists, engineers | Analysts, BI users |
+| Schema-on-read             | Schema-on-write    |
+
+// Hadoop HDFS as an example
+
+In your Hadoop environment:
+
+```text
+CSV / JSON
+    ↓
+HDFS
+    ↓
+Data Lake
+```
+
+HDFS can therefore act as the storage layer of a Data Lake.
+
+---
+
+# 3. Designing a Data Warehouse for an ETL Pipeline
+
+// ETL
+
+ETL means:
+
+Extract → Transform → Load
+
+```text
+Source
+  ↓
+Extract
+  ↓
+Transform
+  ↓
+Load
+  ↓
+Data Warehouse
+```
+
+// Example
+
+Suppose a company has customer data:
+
+```text
+customer_id,name,amount
+101,Ravi,500
+102,Anita,700
+103,John,300
+```
+
+// Extract
+
+Read the data from:
+
+```text
+Database / CSV / API
+```
+
+// Transform
+
+Perform operations such as:
+
+* Remove duplicates
+* Handle NULL values
+* Convert data types
+* Calculate totals
+* Standardize names
+
+Example:
+
+```text
+500
+700
+300
+```
+
+Total:
+
+```text
+1500
+```
+
+// Load
+
+Load the transformed data into:
+
+```text
+Data Warehouse
+```
+
+---
+
+# 4. Designing a Data Lake for an ETL Pipeline
+
+A Data Lake can be used as an intermediate or long-term storage layer.
+
+A common architecture is:
+
+```text
+Source Systems
+      ↓
+   Extract
+      ↓
+   RAW DATA
+      ↓
+   Data Lake
+      ↓
+ Transform
+      ↓
+Processed Data
+      ↓
+Data Warehouse
+      ↓
+Reports / BI
+```
+
+// Typical Data Lake layers
+
+```text
+Data Lake
+│
+├── Raw
+│
+├── Processed
+│
+└── Curated
+```
+
+// Raw
+
+Original data.
+
+```text
+sales.csv
+customers.json
+```
+
+// Processed
+
+Cleaned/transformed data.
+
+```text
+clean_sales.parquet
+```
+
+// Curated
+
+Business-ready data.
+
+```text
+customer_sales_summary
+```
+
+---
+
+# 5. ETL vs ELT
+
+This is an important interview question.
+
+// ETL
+
+```text
+Extract
+   ↓
+Transform
+   ↓
+Load
+```
+
+Transformation happens before loading into the target system.
+
+Example:
+
+```text
+CSV
+ ↓
+Python/Spark
+ ↓
+Clean data
+ ↓
+Warehouse
+```
+
+---
+
+// ELT
+
+ELT means:
+
+Extract → Load → Transform
+
+```text
+Extract
+   ↓
+Load
+   ↓
+Transform
+```
+
+The raw data is loaded first, and transformation happens inside the target platform.
+
+Example:
+
+```text
+CSV
+ ↓
+HDFS / Data Lake
+ ↓
+Hive
+ ↓
+Transform using HiveQL
+ ↓
+Analytics
+```
+
+// ETL vs ELT
+
+| ETL                            | ELT                                  
+
+| Extract → Transform → Load     | Extract → Load → Transform           |
+| Transform before loading       | Transform after loading              |
+| Target receives processed data | Target can store raw data            |
+| Traditional warehouses         | Modern cloud/data-lake architectures |
+| Less raw data in target        | Raw data retained                    |
+
+// Easy way to remember
+
+ETL: Transform first
+
+ELT: Load first
+
+---
+
+# 6. What is Apache Airflow?
+
+Apache Airflow is a workflow orchestration platform.
+
+Its job is to schedule, execute and monitor data workflows.
+
+It does not primarily perform the actual data transformation.
+
+For example:
+
+```text
+Extract Data
+     ↓
+Clean Data
+     ↓
+Load Data
+     ↓
+Run Hive Query
+     ↓
+Generate Report
+```
+
+Airflow can coordinate these steps.
+
+---
+
+# 7. What is a DAG?
+
+DAG means:
+
+Directed Acyclic Graph
+
+In Airflow, a DAG represents a workflow.
+
+Example:
+
+```text
+       Extract
+          ↓
+       Transform
+          ↓
+         Load
+          ↓
+        Report
+```
+
+Each box is a task.
+
+The DAG defines:
+
+* What tasks should run
+* Task dependencies
+* Schedule
+* Start date
+* Retry behavior
+
+// Important point
+
+A DAG does not mean the data itself.
+
+It defines the workflow/process.
+
+---
+
+# 8. Operators
+
+An Operator defines what a task should do.
+
+Common Airflow operators include:
+
+// PythonOperator
+
+Runs Python code.
+
+```text
+Python Task
+    ↓
+Run Python function
+```
+
+// BashOperator
+
+Runs Linux commands.
+
+```text
+Bash Task
+    ↓
+hdfs dfs -ls /
+```
+
+// SQL operators
+
+Run SQL queries.
+
+```text
+SQL Task
+   ↓
+SELECT ...
+```
+
+// Example
+
+```text
+Task 1 → BashOperator
+Task 2 → PythonOperator
+Task 3 → SQL Operator
+```
+
+---
+
+# 9. Scheduler
+
+The Scheduler decides when scheduled tasks should run.
+
+Example:
+
+Suppose a DAG is scheduled daily at 1 AM.
+
+```text
+12:00 AM
+   ↓
+Scheduler waits
+   ↓
+01:00 AM
+   ↓
+DAG starts
+```
+
+So:
+
+Scheduler = decides when workflows/tasks should run.
+
+---
+
+# 10. Sensors
+
+A Sensor waits for something to happen.
+
+Example:
+
+Suppose Airflow should wait until a file arrives.
+
+```text
+Airflow
+   ↓
+Wait for sales.csv
+   ↓
+File arrives
+   ↓
+Continue pipeline
+```
+
+Sensors can wait for:
+
+* File
+* Database record
+* Another DAG
+* Time
+* External event
+
+// Simple definition
+
+Sensor = Wait until a condition becomes true.
+
+---
+
+# 11. Hooks
+
+A Hook provides a connection to an external system.
+
+For example:
+
+```text
+Airflow
+   ↓
+Hook
+   ↓
+MySQL
+```
+
+or
+
+```text
+Airflow
+   ↓
+Hook
+   ↓
+AWS
+```
+
+or
+
+```text
+Airflow
+   ↓
+Hook
+   ↓
+PostgreSQL
+```
+
+// Simple definition
+
+Hook = Interface used by Airflow to communicate with an external system.
+
+---
+
+# 12. Connections
+
+Airflow Connections store connection information required to access external systems.
+
+For example:
+
+```text
+Connection ID: mysql_prod
+Host: database-server
+Username: admin
+Password: 
+Port: 3306
+```
+
+Instead of writing database credentials directly inside the DAG, Airflow can use a Connection.
+
+// Simple difference
+
+```text
+Connection
+     ↓
+Stores connection details
+
+Hook
+     ↓
+Uses those details to communicate with system
+```
+
+---
+
+# 13. Airflow Architecture — Simple View
+
+```text
+                    Airflow
+                       |
+              +--------+--------+
+              |                 |
+          Scheduler          Web UI
+              |
+           Executor
+              |
+           Workers
+              |
+        +-----+-----+
+        |     |     |
+       Task  Task  Task
+```
+
+// Important components
+
+| Component  | Purpose                      |
+
+| DAG        | Defines workflow             |
+| Task       | Individual unit of work      |
+| Operator   | Defines what task does       |
+| Scheduler  | Decides when to run          |
+| Executor   | Determines how tasks execute |
+| Worker     | Executes tasks               |
+| Sensor     | Waits for condition          |
+| Hook       | Connects to external systems |
+| Connection | Stores connection details    |
+| Web UI     | Monitor/manage workflows     |
+
+---
+
+# 14. Airflow vs Informatica
+
+Informatica is an enterprise data integration and data management platform.
+
+Both can be used to build and automate data pipelines, but their approaches are different.
+
+// Airflow
+
+```text
+DAG
+ ↓
+Operators
+ ↓
+Python / SQL / Bash / Spark / etc.
+```
+
+Airflow is particularly useful when organizations want code-based workflow orchestration.
+
+// Informatica
+
+Typically provides a more GUI-driven enterprise data integration experience.
+
+```text
+Source
+  ↓
+Transformation
+  ↓
+Transformation
+  ↓
+Target
+```
+
+// Simple comparison
+
+| Airflow                                 | Informatica                    
+
+| Workflow orchestration                  | Data integration + management  |
+| DAG-based                               | GUI/design-based workflows     |
+| Python/code friendly                    | Low-code/GUI friendly          |
+| Open source core                        | Commercial enterprise platform |
+| Many external systems through providers | Strong enterprise connectors   |
+| Excellent scheduling/orchestration      | Strong ETL/data integration    |
+
+---
+
+# 15. Work Management with Airflow
+
+Airflow can manage a large number of workflows.
+
+For example:
+
+```text
+Daily Sales DAG
+Daily Customer DAG
+Weekly Report DAG
+Monthly Finance DAG
+```
+
+Each DAG can have multiple tasks.
+
+```text
+Sales DAG
+
+Extract
+   ↓
+Validate
+   ↓
+Transform
+   ↓
+Load
+   ↓
+Generate Report
+```
+
+Airflow provides:
+
+* Scheduling
+* Dependencies
+* Retries
+* Logging
+* Monitoring
+* Failure handling
+* Task history
+
+---
+
+# 16. Automating an Entire Data Pipeline with Airflow
+
+Suppose we have:
+
+```text
+CSV
+ ↓
+HDFS
+ ↓
+Hive
+ ↓
+Analytics
+```
+
+Without Airflow, we may manually execute:
+
+```bash
+hdfs dfs -put sales.csv /input
+```
+
+then:
+
+```bash
+hive -f sales.sql
+```
+
+then run another script.
+
+With Airflow:
+
+```text
+             Airflow DAG
+                  |
+        +---------+---------+
+        |         |         |
+     Upload     Hive      Report
+       CSV      Query      Task
+        |         |         |
+        +---------+---------+
+                  |
+              Complete
+```
+
+Airflow automatically controls the order.
+
+// Example dependencies
+
+```text
+upload_data
+     ↓
+validate_data
+     ↓
+transform_data
+     ↓
+load_hive
+     ↓
+generate_report
+```
+
+If `upload_data` fails:
+
+```text
+validate_data
+      X
+```
+
+It does not continue until the dependency is satisfied.
+
+---
+
+# 17. Airflow Retry Mechanism
+
+Suppose a task fails because of a temporary database/network problem.
+
+Airflow can retry it.
+
+```text
+Task
+ ↓
+Failed
+ ↓
+Retry 1
+ ↓
+Failed
+ ↓
+Retry 2
+ ↓
+Success
+```
+
+This is very useful in production pipelines.
+
+---
+
+# 18. Airflow Monitoring
+
+Airflow provides a Web UI where we can see:
+
+* DAGs
+* Tasks
+* Running tasks
+* Failed tasks
+* Successful tasks
+* Task duration
+* Logs
+* Retry information
+
+Simple flow:
+
+```text
+DAG
+ ↓
+Airflow Scheduler
+ ↓
+Task execution
+ ↓
+Logs
+ ↓
+Airflow UI
+```
+
+---
+
+# 19. Running Airflow on Cloud
+
+Instead of installing and maintaining Airflow ourselves, organizations can use managed Airflow services.
+
+The cloud provider manages much of the infrastructure.
+
+Examples include:
+
+* Amazon Managed Workflows for Apache Airflow (MWAA) on AWS
+* Cloud Composer on Google Cloud
+* Azure Managed Airflow offerings on Microsoft Azure
+
+The exact service capabilities and supported Airflow versions can change over time.
+
+// Traditional approach
+
+```text
+Company
+   ↓
+Own servers
+   ↓
+Install Airflow
+   ↓
+Maintain Airflow
+   ↓
+Upgrade Airflow
+   ↓
+Manage infrastructure
+```
+
+// Managed Airflow
+
+```text
+Cloud Provider
+       ↓
+Managed Airflow
+       ↓
+Company
+       ↓
+Upload DAGs
+       ↓
+Run pipelines
+```
+
+The cloud provider handles much of the infrastructure management.
+
+---
+
+# 20. Why Companies Use Airflow
+
+Main reasons:
+
+1. Scheduling
+2. Workflow automation
+3. Task dependencies
+4. Retries
+5. Monitoring
+6. Logging
+7. Integration with many technologies
+8. Pipeline orchestration
+
+For example:
+
+```text
+Database
+   ↓
+Airflow
+   ↓
+Python
+   ↓
+Spark
+   ↓
+HDFS / S3
+   ↓
+Hive
+   ↓
+Data Warehouse
+   ↓
+BI Dashboard
+```
+
+Airflow can coordinate this complete workflow.
+
+---
+
+# 21. Complete Picture
+
+A modern data pipeline may look like:
+
+```text
+                SOURCE SYSTEMS
+                     |
+       +-------------+-------------+
+       |             |             |
+     MySQL          API           CSV
+       |             |             |
+       +-------------+-------------+
+                     |
+                  AIRFLOW
+                     |
+             Extract / Load
+                     |
+                  DATA LAKE
+                     |
+              Spark / Hive
+                     |
+                Transform
+                     |
+              DATA WAREHOUSE
+                     |
+                BI / Reports
+```
+
+Airflow is the orchestrator.
+
+It tells the different systems what to execute, when to execute it, and in what order.
+
+---
+
+# 22. Important Interview Definitions
+
+| Term            | Simple definition                                                                       
+
+| Data Warehouse  | Stores processed structured data for analytics                                          |
+| Data Lake       | Stores raw data in different formats                                                    |
+| ETL             | Extract → Transform → Load                                                              |
+| ELT             | Extract → Load → Transform                                                              |
+| Airflow         | Workflow orchestration platform                                                         |
+| DAG             | Defines a workflow and its dependencies                                                 |
+| Task            | One unit of work in a DAG                                                               |
+| Operator        | Defines what a task does                                                                |
+| Scheduler       | Determines when tasks should run                                                        |
+| Sensor          | Waits for a condition                                                                   |
+| Hook            | Connects Airflow to an external system                                                  |
+| Connection      | Stores external-system connection details                                               |
+| Informatica     | Enterprise data integration/data management platform                                    |
+| Managed Airflow | Cloud-hosted Airflow where infrastructure management is largely handled by the provider |
+
+// One-line memory trick
+
+```text
+Data Lake      → Store raw data
+Data Warehouse → Analyze structured data
+ETL            → Transform before Load
+ELT            → Load before Transform
+Airflow        → Orchestrate the pipeline
+DAG            → Define the workflow
+Operator       → Perform the task
+Scheduler      → Decide when
+Sensor         → Wait
+Hook           → Connect
+Connection     → Store connection details
+```

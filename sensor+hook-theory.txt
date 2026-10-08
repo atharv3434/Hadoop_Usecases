@@ -1,0 +1,653 @@
+ETL-stage mapping + Sensor/Hook 
+
+
+// Business Problem
+
+A telecom company collects customer usage information every day.
+
+For example:
+
+* Customer ID
+* Call minutes
+* SMS count
+* Mobile data usage
+* Customer plan
+* Telecom circle
+* Usage date
+
+This information is stored in a MySQL database.
+
+The company wants to automatically generate a daily customer usage report.
+
+The problem is that the telecom application may not finish sending the day's data at exactly 2:00 AM.
+
+Therefore, simply starting the ETL at 2:00 AM can be dangerous.
+
+// What can go wrong?
+
+Suppose Airflow starts at:
+
+```text
+2:00 AM
+```
+
+But the telecom application finishes preparing the data only at:
+
+```text
+2:15 AM
+```
+
+If we start Sqoop at 2:00 AM:
+
+```text
+2:00 AM
+Airflow
+   |
+   v
+Sqoop
+   |
+   v
+MySQL
+   |
+   v
+Incomplete data
+```
+
+The report may contain incomplete information.
+
+// Solution
+
+We use an Airflow Sensor.
+
+The Sensor waits until the upstream system tells us:
+
+```text
+"Today's telecom data is ready."
+```
+
+In our training project, this is simulated using:
+
+```text
+usage.ready
+```
+
+Therefore:
+
+```text
+Airflow starts at 2:00 AM
+        |
+        v
+     Sensor
+        |
+        | Is usage.ready present?
+        |
+    +---+---+
+    |       |
+   NO      YES
+    |       |
+  WAIT    Continue
+    |       |
+    +---+---+
+        |
+        v
+      Sqoop
+        |
+        v
+       HDFS
+        |
+        v
+       Hive
+        |
+        v
+     Report
+```
+
+The document currently demonstrates exactly this behavior: the Sensor waits for `usage.ready` before allowing Sqoop to run. 
+
+---
+
+# 2. Where Does ETL Happen in This Project?
+
+This is very important for freshers.
+
+| ETL Stage  | What happens  | Technology                  
+
+| Extract | Get telecom data from MySQL| Sqoop                   
+
+| Load        | Store raw data in Hadoop| HDFS                    
+
+| Transform| Clean, convert and aggregate data| Hive                   
+
+
+| Orchestrate|Control complete workflow |Airflow               
+| Schedule    | Decide when workflow starts |   
+         		| Airflow Cron expression |
+| Wait        | Wait until source data is ready
+			| Airflow Sensor|
+
+| Connect | Access configured external system/path | 				Airflow Hook            
+
+The project currently describes Sqoop as the extraction layer, HDFS as raw storage, Hive as transformation, and Airflow as orchestration. 
+
+// Simple way to remember
+
+```text
+MySQL
+  |
+  | EXTRACT
+  | Sqoop
+  v
+HDFS
+  |
+  | STORE RAW DATA
+  |
+  v
+Hive
+  |
+  | TRANSFORM
+  |
+  v
+Report
+```
+
+Airflow sits above this entire pipeline and controls it.
+
+# 3. Basic Definition of Sensor
+
+// What is a Sensor?
+
+An Airflow Sensor is a special type of task that waits for a condition to become true before allowing the workflow to continue.
+
+Simple definition:
+
+> Sensor = WAIT
+
+In our project:
+
+```python
+FileSensor(
+    task_id="wait_for_usage_ready_file",
+    filepath="usage.ready",
+    fs_conn_id="telecom_files"
+)
+```
+
+It asks:
+
+> "Does `usage.ready` exist?"
+
+If NO:
+
+```text
+Wait
+ ↓
+Check again
+ ↓
+Wait
+ ↓
+Check again
+```
+
+If YES:
+
+```text
+usage.ready found
+       |
+       v
+Continue pipeline
+```
+
+Our document configures the Sensor to check approximately every 30 seconds and wait for up to 30 minutes. 
+
+---
+
+# 4. Real-Time Example of a Sensor
+
+Think about an airport.
+
+You are waiting for your flight.
+
+You cannot board immediately.
+
+You wait until:
+
+```text
+"Boarding started"
+```
+
+The system keeps checking the boarding condition.
+
+```text
+Flight process
+      |
+      v
+Is boarding started?
+      |
+   NO | YES
+      |
+     WAIT
+      |
+   Check again
+```
+
+This is similar to an Airflow Sensor.
+
+// Another simple example
+
+Suppose a company receives a daily bank transaction file:
+
+```text
+transactions_2026_09_30.csv
+```
+
+The ETL should not start until this file arrives.
+
+So:
+
+```text
+Airflow
+   |
+   v
+FileSensor
+   |
+   | File available?
+   |
+   +---- NO ---> WAIT
+   |
+   +---- YES --> Process file
+```
+
+That is exactly the purpose of the `FileSensor` in this project.
+
+---
+
+# 5. Basic Definition of Hook
+
+// What is a Hook?
+
+An Airflow Hook provides a programmatic way for Airflow tasks to communicate with an external system using a configured Airflow Connection.
+
+Simple definition:
+
+> Hook = CONNECT
+
+Remember:
+
+```text
+Sensor = WAIT
+Hook   = CONNECT
+```
+
+In this project:
+
+```text
+Airflow Connection
+        |
+        v
+    telecom_files
+        |
+        v
+      FSHook
+        |
+        v
+/home/sari/telecom-etl/incoming
+```
+
+The project uses `FSHook` to obtain the configured filesystem path and verify that the ready file exists. 
+
+---
+
+# 6. Real-Time Example of a Hook
+
+Think about a phone contact.
+
+Suppose you want to call your friend.
+
+You need:
+
+```text
+Phone
+  |
+  v
+Contact information
+  |
+  v
+Friend's phone
+```
+
+The contact information tells your application how to connect.
+
+Similarly, in Airflow:
+
+```text
+Airflow Task
+     |
+     v
+Hook
+     |
+     v
+Connection
+     |
+     v
+External System
+```
+
+For example:
+
+```text
+Python Task
+     |
+     v
+MySQL Hook
+     |
+     v
+MySQL Connection
+     |
+     v
+MySQL Database
+```
+
+or in our project:
+
+```text
+Python Task
+     |
+     v
+FSHook
+     |
+     v
+telecom_files Connection
+     |
+     v
+Incoming folder
+```
+
+---
+
+# 7. Sensor vs Hook — Very Easy
+
+| Sensor                      | Hook                                   
+
+| Waits                       | Connects/accesses                      
+
+| Checks a condition          | Provides connection 				information        |
+| Controls waiting            | Helps communicate 				with external system 
+| Example: Is file available? | Example: Where is the 				filesystem?      
+| `FileSensor`                | `FSHook`                               
+
+// Memory trick
+
+```text
+SENSOR = "Should I WAIT?"
+
+HOOK = "How do I CONNECT?"
+```
+
+---
+
+# 8. Why Do We Need Both?
+
+This is the most important concept.
+
+The Sensor says:
+
+```text
+"Wait until usage.ready appears."
+```
+
+The Hook says:
+
+```text
+"Use this configured filesystem connection/path
+to access the location."
+```
+
+Therefore:
+
+```text
+             Airflow
+                |
+                v
+             Sensor
+                |
+         Is file ready?
+          /          \
+        NO            YES
+        |              |
+      WAIT            Hook
+                       |
+                       v
+                Filesystem
+                       |
+                       v
+                     Sqoop
+```
+
+The document's actual DAG follows this sequence:
+
+```text
+wait_for_usage_ready_file
+          ↓
+verify_file_using_hook
+          ↓
+sqoop_extract_mysql_to_hdfs
+          ↓
+hive_transform_and_load
+          ↓
+generate_usage_summary
+          ↓
+pipeline_complete
+```
+
+
+
+---
+
+# 9. At Which Stage Are Sensor and Hook Used?
+
+This should be made very clear in the document.
+
+// Before Extract
+
+```text
+MySQL
+  |
+  |
+Airflow
+  |
+  v
+Sensor
+  |
+  | Wait for source data
+  v
+Hook
+  |
+  | Verify/access ready location
+  v
+Sqoop
+```
+
+Therefore:
+
+// Sensor
+
+Used before extraction.
+
+Purpose:
+
+```text
+Wait until telecom data is ready.
+```
+
+// Hook
+
+Used around the validation/access step before extraction.
+
+Purpose:
+
+```text
+Access the configured filesystem location
+and verify the ready file.
+```
+
+// Sqoop
+
+Then performs the actual:
+
+```text
+EXTRACT
+```
+
+// HDFS
+
+Receives the raw data:
+
+```text
+LOAD / RAW STORAGE
+```
+
+// Hive
+
+Performs:
+
+```text
+TRANSFORM + AGGREGATE
+```
+
+---
+
+# 10. Complete Real-Time Story
+
+A fresher can understand the entire project using this story:
+
+> Imagine a telecom company generates customer usage data every night.
+
+At 2:00 AM, Airflow wakes up.
+
+```text
+2:00 AM
+   |
+   v
+Airflow
+```
+
+Airflow asks:
+
+> "Is today's data ready?"
+
+The Sensor checks:
+
+```text
+usage.ready
+```
+
+If the file is not there:
+
+```text
+Sensor
+  |
+  v
+WAIT
+```
+
+At 2:15 AM, the telecom application finishes preparing the data and creates:
+
+```text
+usage.ready
+```
+
+The Sensor detects it:
+
+```text
+Sensor
+   |
+   v
+READY
+```
+
+Then the Hook verifies the configured filesystem location:
+
+```text
+FSHook
+   |
+   v
+incoming folder
+```
+
+Now Airflow starts Sqoop:
+
+```text
+MySQL
+   |
+   | Sqoop
+   v
+HDFS
+```
+
+Then Hive transforms the raw data:
+
+```text
+HDFS
+   |
+   v
+Hive
+   |
+   v
+Customer Usage Summary
+```
+
+Finally:
+
+```text
+Report
+```
+
+So the complete business flow is:
+
+```text
+Telecom Application
+        |
+        v
+      MySQL
+        |
+        | Source
+        v
+     AIRFLOW
+        |
+        v
+      CRON
+        |
+        v
+     SENSOR
+        |
+        | Wait until ready
+        v
+      HOOK
+        |
+        | Access/verify
+        v
+      SQOOP
+        |
+        | EXTRACT
+        v
+      HDFS
+        |
+        | RAW DATA
+        v
+      HIVE
+        |
+        | TRANSFORM
+        v
+ CUSTOMER USAGE SUMMARY
+        |
+        v
+      REPORT
+```
+
+This fits the architecture already present in your document. 
+
+// One-line interview explanation
+
+> "In my telecom ETL project, Airflow schedules the pipeline at 2 AM. A FileSensor waits for the upstream `usage.ready` file before extraction. An FSHook accesses the configured filesystem connection and verifies the ready location. Once the condition is satisfied, Sqoop extracts MySQL data into HDFS, and Hive transforms and aggregates the data to generate the customer usage report."
+
+This addition will make the document much easier for freshers to understand before they start executing the commands.

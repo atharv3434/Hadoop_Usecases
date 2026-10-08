@@ -1,0 +1,868 @@
+Yes. For these two lab requirements, we can create **one simple corporate-style use case** that covers both:
+
+1. **Write and use a Hive UDF**
+2. **Design a Hive schema and explain an ingestion strategy**
+
+I recommend a **Mobile Application Activity Log Analytics** use case. It is simple enough for a fresher lab, but gives you a good interview explanation.
+
+# Hive Use Case: Mobile App Activity Log Analytics
+
+## 1. Problem Statement
+
+A company operates a mobile application used by thousands of customers every day.
+
+The application generates daily activity logs containing:
+
+* User ID
+* User name
+* Event type
+* Device type
+* Event date
+* Session duration
+
+The data engineering team receives these log files every day and stores them in HDFS.
+
+The company wants to use **Hive** to analyze the logs and generate reports such as:
+
+* Which users generated application activity?
+* How many users performed each type of event?
+* What is the average session duration?
+* How can user names be standardized before reporting?
+
+For this project, we will create a **custom Hive UDF** that converts a user name into uppercase.
+
+For example:
+
+```text
+rahul
+```
+
+becomes:
+
+```text
+RAHUL
+```
+
+The UDF will then be used directly inside a Hive query.
+
+---
+
+# 2. Technology Stack
+
+```text
+Linux / WSL
+Hadoop HDFS
+Hive 3.1.3
+Java 8
+Java UDF
+HiveQL
+```
+
+Architecture:
+
+```text
+Mobile Application
+       |
+       v
+Daily Log Files
+       |
+       v
+HDFS Raw Layer
+       |
+       v
+Hive External Table
+       |
+       v
+Hive Query
+       |
+       +---- Custom UDF
+       |
+       v
+Analytics / Reports
+```
+
+---
+
+# 3. Sample Input Data
+
+We will create:
+
+```text
+app_activity.csv
+```
+
+Example:
+
+```text
+U001,rahul,LOGIN,ANDROID,2026-10-01,35
+U002,priya,VIDEO_PLAY,IOS,2026-10-01,50
+U003,arun,LOGIN,ANDROID,2026-10-01,20
+U004,neha,SEARCH,WEB,2026-10-01,15
+U005,kiran,VIDEO_PLAY,ANDROID,2026-10-01,60
+U006,anita,LOGOUT,IOS,2026-10-01,10
+```
+
+Fields:
+
+| Field             | Description          |
+| ----------------- | -------------------- |
+| `user_id`         | Unique user          |
+| `user_name`       | User name            |
+| `event_type`      | Application activity |
+| `device_type`     | Device used          |
+| `event_date`      | Date of activity     |
+| `session_minutes` | Session duration     |
+
+---
+
+# 4. Create Project Directory
+
+Open your terminal:
+
+```bash
+mkdir -p ~/hive-app-logs/data
+```
+
+Go inside:
+
+```bash
+cd ~/hive-app-logs/data
+```
+
+Create the input file:
+
+```bash
+nano app_activity.csv
+```
+
+Enter:
+
+```text
+U001,rahul,LOGIN,ANDROID,2026-10-01,35
+U002,priya,VIDEO_PLAY,IOS,2026-10-01,50
+U003,arun,LOGIN,ANDROID,2026-10-01,20
+U004,neha,SEARCH,WEB,2026-10-01,15
+U005,kiran,VIDEO_PLAY,ANDROID,2026-10-01,60
+U006,anita,LOGOUT,IOS,2026-10-01,10
+```
+
+Save:
+
+```text
+Ctrl + O
+Enter
+Ctrl + X
+```
+
+Verify:
+
+```bash
+cat app_activity.csv
+```
+
+---
+
+# 5. Ingestion Strategy
+
+This is an important part of the case study.
+
+The application generates a new log file every day:
+
+```text
+app_activity_2026-10-01.csv
+app_activity_2026-10-02.csv
+app_activity_2026-10-03.csv
+...
+```
+
+The ingestion strategy is:
+
+```text
+Mobile Application
+       |
+       v
+Daily CSV Log
+       |
+       v
+HDFS Raw Layer
+       |
+       v
+Hive External Table
+       |
+       v
+Hive Analytics
+```
+
+We use an **external Hive table** because the raw files are maintained in HDFS independently of Hive metadata.
+
+### Short interview explanation
+
+> "The application generates daily activity log files. The ingestion process places these files into an HDFS raw directory. Hive uses an external table to query the raw data without taking ownership of the underlying files. This allows the ingestion layer and Hive warehouse layer to remain loosely coupled."
+
+---
+
+# 6. Create HDFS Raw Directory
+
+Run:
+
+```bash
+hdfs dfs -mkdir -p /app-logs/raw
+```
+
+Upload the file:
+
+```bash
+hdfs dfs -put ~/hive-app-logs/data/app_activity.csv /app-logs/raw/
+```
+
+Verify:
+
+```bash
+hdfs dfs -ls -h /app-logs/raw
+```
+
+Expected:
+
+```text
+app_activity.csv
+```
+
+You can also verify the contents:
+
+```bash
+hdfs dfs -cat /app-logs/raw/app_activity.csv
+```
+
+---
+
+# 7. Create Hive Database
+
+Start Hive:
+
+```bash
+hive
+```
+
+Create the database:
+
+```sql
+CREATE DATABASE IF NOT EXISTS app_analytics;
+```
+
+Use it:
+
+```sql
+USE app_analytics;
+```
+
+Verify:
+
+```sql
+SHOW DATABASES;
+```
+
+---
+
+# 8. Create Hive External Table
+
+Create:
+
+```sql
+CREATE EXTERNAL TABLE app_activity (
+    user_id STRING,
+    user_name STRING,
+    event_type STRING,
+    device_type STRING,
+    event_date STRING,
+    session_minutes INT
+)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
+STORED AS TEXTFILE
+LOCATION '/app-logs/raw';
+```
+
+Check the schema:
+
+```sql
+DESCRIBE app_activity;
+```
+
+---
+
+# 9. Verify Data
+
+Run:
+
+```sql
+SELECT * FROM app_activity;
+```
+
+Expected:
+
+```text
+U001  rahul  LOGIN       ANDROID  2026-10-01  35
+U002  priya  VIDEO_PLAY  IOS      2026-10-01  50
+U003  arun   LOGIN       ANDROID  2026-10-01  20
+U004  neha   SEARCH      WEB      2026-10-01  15
+U005  kiran  VIDEO_PLAY  ANDROID  2026-10-01  60
+U006  anita  LOGOUT      IOS      2026-10-01  10
+```
+
+At this point the **ingestion + Hive schema portion is complete**.
+
+---
+
+# PART 2 — Create the Hive UDF
+
+Now we implement the main requirement.
+
+## 10. What is a Hive UDF?
+
+UDF means:
+
+**User Defined Function**
+
+Hive already provides built-in functions such as:
+
+```sql
+UPPER()
+LOWER()
+LENGTH()
+CONCAT()
+```
+
+But sometimes the business requires custom logic that is not available as a built-in Hive function.
+
+We can write our own Java function and use it in Hive.
+
+For this project:
+
+```text
+rahul
+```
+
+should become:
+
+```text
+RAHUL
+```
+
+Our function will be:
+
+```text
+to_upper()
+```
+
+---
+
+# 11. Create Java UDF
+
+Exit Hive:
+
+```sql
+EXIT;
+```
+
+Create a Java project directory:
+
+```bash
+mkdir -p ~/hive-app-logs/udf
+```
+
+Go there:
+
+```bash
+cd ~/hive-app-logs/udf
+```
+
+Create the Java file:
+
+```bash
+nano UpperCaseUDF.java
+```
+
+Enter:
+
+```java
+import org.apache.hadoop.hive.ql.exec.UDF;
+
+public class UpperCaseUDF extends UDF {
+
+    public String evaluate(String input) {
+
+        if (input == null) {
+            return null;
+        }
+
+        return input.toUpperCase();
+    }
+}
+```
+
+Save:
+
+```text
+Ctrl + O
+Enter
+Ctrl + X
+```
+
+---
+
+# 12. Understand the Java UDF
+
+The important part is:
+
+```java
+public class UpperCaseUDF extends UDF
+```
+
+This tells Hive that our Java class is a Hive UDF.
+
+The method:
+
+```java
+public String evaluate(String input)
+```
+
+is called by Hive.
+
+For example:
+
+```text
+Input:
+rahul
+
+evaluate()
+
+Output:
+RAHUL
+```
+
+---
+
+# 13. Find Hive Libraries
+
+We need Hive's library while compiling.
+
+Run:
+
+```bash
+ls /usr/local/hive/lib/hive-exec*.jar
+```
+
+You should see something similar to:
+
+```text
+/usr/local/hive/lib/hive-exec-3.1.3.jar
+```
+
+---
+
+# 14. Compile the UDF
+
+Run:
+
+```bash
+javac -cp /usr/local/hive/lib/hive-exec-3.1.3.jar UpperCaseUDF.java
+```
+
+Check:
+
+```bash
+ls
+```
+
+You should see:
+
+```text
+UpperCaseUDF.java
+UpperCaseUDF.class
+```
+
+---
+
+# 15. Create a JAR
+
+Run:
+
+```bash
+jar -cvf uppercase_udf.jar UpperCaseUDF.class
+```
+
+Check:
+
+```bash
+ls -lh
+```
+
+You should see:
+
+```text
+UpperCaseUDF.class
+UpperCaseUDF.java
+uppercase_udf.jar
+```
+
+---
+
+# 16. Start Hive
+
+Run:
+
+```bash
+hive
+```
+
+Select database:
+
+```sql
+USE app_analytics;
+```
+
+---
+
+# 17. Add the UDF JAR to Hive
+
+Run:
+
+```sql
+ADD JAR /home/sari/hive-app-logs/udf/uppercase_udf.jar;
+```
+
+If your username/path is different, use the actual path shown by:
+
+```bash
+pwd
+```
+
+---
+
+# 18. Create Hive Function
+
+Run:
+
+```sql
+CREATE TEMPORARY FUNCTION to_upper
+AS 'UpperCaseUDF';
+```
+
+Now Hive knows:
+
+```text
+to_upper()
+```
+
+---
+
+# 19. Test the UDF
+
+Run:
+
+```sql
+SELECT to_upper('rahul');
+```
+
+Expected:
+
+```text
+RAHUL
+```
+
+Test another:
+
+```sql
+SELECT to_upper('priya');
+```
+
+Expected:
+
+```text
+PRIYA
+```
+
+---
+
+# 20. Use the UDF on the Hive Table
+
+Now we perform the actual requirement.
+
+Run:
+
+```sql
+SELECT
+    user_id,
+    to_upper(user_name) AS user_name,
+    event_type,
+    device_type,
+    event_date,
+    session_minutes
+FROM app_activity;
+```
+
+Expected concept:
+
+```text
+U001  RAHUL  LOGIN
+U002  PRIYA  VIDEO_PLAY
+U003  ARUN   LOGIN
+U004  NEHA   SEARCH
+U005  KIRAN  VIDEO_PLAY
+U006  ANITA  LOGOUT
+```
+
+This proves that your custom UDF is being used in a Hive query.
+
+---
+
+# 21. Business Query Using UDF
+
+Now let's make it more realistic.
+
+Business requirement:
+
+> Generate a standardized activity report with uppercase user names and show users whose session duration is greater than 30 minutes.
+
+Run:
+
+```sql
+SELECT
+    user_id,
+    to_upper(user_name) AS standardized_user_name,
+    event_type,
+    device_type,
+    session_minutes
+FROM app_activity
+WHERE session_minutes > 30;
+```
+
+Expected users include:
+
+```text
+RAHUL
+PRIYA
+KIRAN
+```
+
+---
+
+# 22. Another Business Query
+
+Find the total session time for each user.
+
+```sql
+SELECT
+    to_upper(user_name) AS user_name,
+    SUM(session_minutes) AS total_session_minutes
+FROM app_activity
+GROUP BY to_upper(user_name);
+```
+
+This demonstrates that the UDF can also participate in an analytical query.
+
+---
+
+# 23. Complete Architecture
+
+Your final project architecture is:
+
+```text
+                 MOBILE APPLICATION
+                         |
+                         v
+                  Daily Activity Logs
+                         |
+                         v
+                     CSV Files
+                         |
+                         v
+                     HDFS RAW
+                /app-logs/raw
+                         |
+                         v
+                Hive External Table
+                   app_activity
+                         |
+                         v
+                  Hive Analytics
+                         |
+             +-----------+-----------+
+             |                       |
+             v                       v
+       Built-in Functions       Custom UDF
+                                     |
+                                     v
+                              UpperCaseUDF
+                                     |
+                                     v
+                           Standardized Reports
+```
+
+---
+
+# 24. Why External Table?
+
+This is important for your interview.
+
+We use:
+
+```sql
+CREATE EXTERNAL TABLE
+```
+
+because the raw logs are stored in HDFS and may be managed by the ingestion process independently of Hive.
+
+If the Hive table is dropped:
+
+```sql
+DROP TABLE app_activity;
+```
+
+the external table's metadata is removed, while the underlying HDFS data is normally retained.
+
+This is useful in a data-lake architecture.
+
+---
+
+# 25. Why Use a UDF?
+
+Suppose the company has a business rule:
+
+> All user names in reports must be standardized to uppercase.
+
+Hive already has `UPPER()`, so **technically we would not need a custom UDF for this particular transformation in a real production system**.
+
+For the lab, however, it is useful because it demonstrates the mechanism for creating a custom Hive UDF.
+
+In a real project, a UDF would be justified when the business logic is more specialized, for example:
+
+```text
+Application-specific ID normalization
+Custom code mapping
+Organization-specific formatting
+Special business rules
+```
+
+This is a good interview point: **don't claim you wrote a UDF when a standard Hive function already solves the problem.** Explain that this is a learning/demo UDF.
+
+---
+
+# 26. Fresher Interview Explanation
+
+If the interviewer asks:
+
+### "Explain your Hive UDF project."
+
+You can say:
+
+> "I implemented a Mobile Application Activity Log Analytics use case using HDFS and Hive. The application generates daily activity logs, which are ingested into an HDFS raw directory. I created an external Hive table over the raw data so that Hive metadata is separated from the underlying HDFS data. I then developed a custom Java Hive UDF called UpperCaseUDF and registered it as a temporary Hive function. I used the UDF in Hive queries to standardize user names and generate analytical reports. This helped me understand Hive external tables, HDFS-based ingestion, Java UDF development, UDF registration, and using custom functions in HiveQL."
+
+---
+
+# 27. Short Ingestion Strategy Note
+
+For your lab record, you can write:
+
+> **Ingestion Strategy:** The mobile application generates daily CSV activity logs. The ingestion process places these files into an HDFS raw directory such as `/app-logs/raw/`. Hive uses an external table to query the files directly from HDFS. Since the data is stored in a raw HDFS layer independently of Hive, the external table provides separation between data storage and Hive metadata. As new daily files arrive in the configured HDFS location, they can be made available for analysis without recreating the Hive table.
+
+---
+
+# 28. Lab Requirement Mapping
+
+| Requirement           | Implementation              |
+| --------------------- | --------------------------- |
+| Write a UDF           | `UpperCaseUDF.java`         |
+| Compile UDF           | `javac`                     |
+| Create JAR            | `jar -cvf`                  |
+| Add JAR to Hive       | `ADD JAR`                   |
+| Register UDF          | `CREATE TEMPORARY FUNCTION` |
+| Use UDF in query      | `to_upper(user_name)`       |
+| Real-world case study | Mobile App Activity Logs    |
+| Hive schema           | `app_activity`              |
+| Ingestion strategy    | Application → HDFS → Hive   |
+| Warehouse table       | External Hive table         |
+| Analytics             | Session/event analysis      |
+
+---
+
+# 29. Final Commands — Quick Lab Revision
+
+When you need to reproduce this in a lab exam, remember:
+
+```bash
+mkdir -p ~/hive-app-logs/data
+cd ~/hive-app-logs/data
+nano app_activity.csv
+```
+
+Then:
+
+```bash
+hdfs dfs -mkdir -p /app-logs/raw
+hdfs dfs -put app_activity.csv /app-logs/raw/
+```
+
+Hive:
+
+```sql
+CREATE DATABASE app_analytics;
+USE app_analytics;
+
+CREATE EXTERNAL TABLE app_activity (
+    user_id STRING,
+    user_name STRING,
+    event_type STRING,
+    device_type STRING,
+    event_date STRING,
+    session_minutes INT
+)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
+STORED AS TEXTFILE
+LOCATION '/app-logs/raw';
+```
+
+Java UDF:
+
+```java
+import org.apache.hadoop.hive.ql.exec.UDF;
+
+public class UpperCaseUDF extends UDF {
+    public String evaluate(String input) {
+        if (input == null) {
+            return null;
+        }
+        return input.toUpperCase();
+    }
+}
+```
+
+Compile:
+
+```bash
+javac -cp /usr/local/hive/lib/hive-exec-3.1.3.jar UpperCaseUDF.java
+jar -cvf uppercase_udf.jar UpperCaseUDF.class
+```
+
+Register:
+
+```sql
+ADD JAR /home/sari/hive-app-logs/udf/uppercase_udf.jar;
+
+CREATE TEMPORARY FUNCTION to_upper
+AS 'UpperCaseUDF';
+```
+
+Use:
+
+```sql
+SELECT
+    user_id,
+    to_upper(user_name) AS user_name,
+    event_type,
+    session_minutes
+FROM app_activity;
+```
+
+That single project covers **both the UDF requirement and the ingestion-and-warehousing case study** in a way you can explain clearly in a fresher interview.

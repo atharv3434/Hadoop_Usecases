@@ -1,0 +1,899 @@
+SESSION 12: HIVEQL
+
+
+// Use Case: Airline Flight Analytics
+
+// Sector: Travel and Aviation
+
+// Problem Statement
+An airline company generates large amounts of flight data containing:
+
+* Flight ID
+* Airline
+* Source
+* Destination
+* Flight status
+* Ticket price
+* Number of passengers
+* Flight date
+
+Hive is used to store and analyze this data using HiveQL.
+
+
+
+# 1. Hive Datatypes
+
+Hive provides different datatypes to define table columns.
+
+// Numeric Datatypes
+
+| Datatype |     Size | Example      |
+
+| TINYINT  |   1 byte | `10`         |
+| SMALLINT |  2 bytes | `1000`       |
+| INT      |  4 bytes | `100000`     |
+| BIGINT   |  8 bytes | `9876543210` |
+| FLOAT    |  4 bytes | `25.5`       |
+| DOUBLE   |  8 bytes | `5500.75`    |
+| DECIMAL  | Variable | `5500.75`    |
+
+`DECIMAL(10,2)` means:
+
+* `10` = total digits
+* `2` = digits after decimal point
+
+//  Datatypes
+STRING
+VARCHAR
+CHAR
+
+
+//Example:
+airline STRING
+
+
+// Date and Time
+DATE
+TIMESTAMP
+//Example:
+flight_date DATE
+
+
+// Boolean
+BOOLEAN
+//Example:
+is_cancelled BOOLEAN
+
+
+// Example
+CREATE TABLE flights (
+    flight_id INT,
+    airline STRING,
+    ticket_price DOUBLE,
+    flight_date DATE
+);
+
+
+// Interview Question
+
+Q: What is the difference between DOUBLE and DECIMAL?
+
+Answer:
+
+`DOUBLE` is a floating-point datatype suitable for approximate numerical values. `DECIMAL` stores exact decimal values and is preferred where numerical precision is important, such as financial values.
+
+2. Operators and Functions
+
+Hive supports operators and built-in functions for data processing.
+
+// 2.1 Comparison Operators
+=
+!=
+>
+<
+>=
+<=
+
+// Example
+
+Find flights costing more than 5000:
+SELECT *FROM flights WHERE ticket_price > 5000;
+
+// 2.2 Logical Operators
+AND
+OR
+NOT
+// Example
+SELECT *FROM flights WHERE airline = 'IndiGo' AND ticket_price > 5000;
+
+// 2.3 Arithmetic Operators
++
+-
+*
+/
+%
+
+
+// Example
+
+Calculate the total ticket value:
+
+SELECT ticket_price * passengers AS total_value FROM flights;
+
+
+
+
+# 3. Hive Functions
+
+Functions perform operations on data.
+
+// Aggregate Functions
+
+Important aggregate functions:
+COUNT()
+SUM()
+AVG()
+MIN()
+MAX()
+
+// Example
+
+Find the average ticket price:
+SELECT AVG(ticket_price) FROM flights;
+
+//Find total passengers:
+SELECT SUM(passengers) FROM flights;
+
+// String Functions
+
+//Examples:
+UPPER()
+LOWER()
+LENGTH()
+CONCAT()
+
+// Example
+SELECT UPPER(airline) FROM flights;
+
+
+// Interview Question
+Q: What is an aggregate function?
+Answer:
+An aggregate function operates on multiple rows and returns a summarized result. Examples are `COUNT()`, `SUM()`, `AVG()`, `MIN()` and `MAX()`.
+
+
+4. Hive Tables
+
+The two important Hive table types are:
+1. Managed Table
+2. External Table
+
+4.1 Managed Table
+
+A managed table is a table where Hive manages the table's data and metadata.
+
+// Example
+CREATE TABLE flights (
+    flight_id INT,
+    airline STRING,
+    source STRING,
+    destination STRING,
+    ticket_price DOUBLE
+);
+
+//Conceptually:
+Managed Table
+      |
+      +---- Metadata → Hive Metastore
+      |
+      +---- Data → Hive-managed location
+
+When a managed table is dropped, Hive normally removes its associated data as well.
+
+4.2 External Table
+
+An external table allows Hive to manage the metadata while the underlying data remains at an external location.
+
+// Example
+
+
+CREATE EXTERNAL TABLE flights_external (
+    flight_id INT,
+    airline STRING,
+    source STRING,
+    destination STRING,
+    ticket_price DOUBLE
+)
+LOCATION '/airline/raw/flights';
+
+
+//Conceptually:
+External Table
+      |
+      +---- Metadata → Hive Metastore
+      |
+      +---- Data → External HDFS location
+
+
+Dropping the external table normally removes the Hive metadata but leaves the underlying external data.
+
+// Interview Question
+
+Q: What is the difference between Managed and External tables?
+
+Answer:
+
+A managed table is controlled by Hive for both metadata and table data. An external table allows Hive to manage the metadata while the underlying data is maintained at an external location.
+
+# 5. Partitioning
+Partitioning divides a large table into smaller logical sections based on the values of one or more columns.
+
+//Common partition columns:
+year
+month
+date
+region
+
+
+// Why Partition?
+Suppose an airline has:
+1 TB of flight data
+If the data is partitioned by year:
+flight_data
+    |
+    +--- year=2024
+    +--- year=2025
+    +--- year=2026
+
+
+A query for 2026 can potentially read only the relevant partition instead of scanning all years.
+
+This is called partition pruning.
+
+// Example
+CREATE TABLE flights_partitioned (
+    flight_id INT,
+    airline STRING,
+    source STRING,
+    destination STRING,
+    ticket_price DOUBLE
+)
+PARTITIONED BY (flight_date STRING);
+
+
+//Insert into a partition:
+INSERT INTO flights_partitioned
+PARTITION (flight_date='2026-10-01')
+VALUES
+(1001, 'IndiGo', 'Bangalore', 'Delhi', 5500);
+
+
+//Query a particular partition:
+SELECT *
+FROM flights_partitioned
+WHERE flight_date = '2026-10-01';
+
+// Interview Question
+Q: Why is partitioning used in Hive?
+
+Answer:
+Partitioning divides large datasets into smaller sections. When a query filters using the partition column, Hive can avoid scanning irrelevant partitions, reducing the amount of data read.
+
+6. Bucketing
+Bucketing divides table data into a fixed number of buckets using the hash of a column.
+
+// Example
+CREATE TABLE flight_buckets (
+    flight_id INT,
+    airline STRING,
+    source STRING,
+    destination STRING,
+    ticket_price DOUBLE
+)
+CLUSTERED BY (airline)
+INTO 4 BUCKETS;
+
+//Conceptually:
+Flight Data
+    |
+    +--- Bucket 0
+    +--- Bucket 1
+    +--- Bucket 2
+    +--- Bucket 3
+
+
+The bucket is determined using hashing on the specified column.
+// Partition vs Bucketing
+
+| Partitioning                       | Bucketing                                               
+
+| Based on column values             | Based on hashing                                        |
+| Number depends on partition values | Fixed number of buckets                                 |
+| Creates partitions/directories     | Creates buckets/files                                   |
+| Useful for partition pruning       | Useful for data organization and certain joins/sampling |
+
+// Interview Question
+
+Q: What is the difference between partitioning and bucketing?
+
+Answer:
+
+Partitioning divides data based on column values, whereas bucketing divides data into a fixed number of buckets using hashing on a specified column.
+
+
+# 7. Algorithms in Hive
+
+The syllabus mentions:
+1. Sorting
+2. Indexing
+3. Searching
+
+//7.1 Sorting
+
+Sorting arranges records according to a particular column.
+
+// Example
+
+//Sort flights by ticket price:
+SELECT flight_id, airline, ticket_price
+FROM flights
+ORDER BY ticket_price DESC;
+
+//Example:
+1006   Vistara     7000
+1002   Air India   6200
+1008   Air India   6100
+1005   Air India   5800
+
+// Interview Question
+
+Q: What does ORDER BY do?
+
+Answer:
+`ORDER BY` sorts the final query result according to the specified column or columns.
+
+# 7.2 Searching / Filtering
+Searching means retrieving records that satisfy a condition.
+
+In HiveQL, the common operation is the `WHERE` clause.
+
+// Example
+
+Find delayed flights:
+SELECT *
+FROM flights
+WHERE flight_status = 'Delayed';
+
+
+// Interview Question
+
+Q: How do you filter records in Hive?
+
+Answer:
+
+The `WHERE` clause is used to filter rows based on a condition.
+
+
+7.3 Indexing
+
+// Important Interview Note
+
+Traditional Hive indexing was designed to speed up searches on particular columns.
+
+For example, conceptually, if an index existed on `flight_id`, a query such as:
+
+
+SELECT *
+FROM flights
+WHERE flight_id = 1005;
+
+
+could use the index to avoid scanning all rows.
+
+However, traditional Hive indexing was removed starting with Hive 3.0. Apache Hive specifically documents this removal under HIVE-18448.
+
+Since our lab uses Hive 3.1.3, students should not try to create a traditional Hive index using `CREATE INDEX`.
+
+// Old Hive Index Syntax — Theory Only
+
+Older Hive versions supported syntax such as:
+
+
+CREATE INDEX flight_id_index
+ON TABLE flights (flight_id)
+AS 'COMPACT';
+
+
+And:
+SHOW INDEX ON flights;
+
+
+However, this traditional indexing feature is not available as a normal Hive 3.x feature.
+
+// What is used instead?
+
+Modern Hive provides other mechanisms for efficient analytical queries, including:
+
+
+Partitioning
+Bucketing
+ORC
+Parquet
+Predicate Pushdown
+Materialized Views
+
+Apache Hive specifically identifies columnar formats such as ORC and Parquet as alternatives that can perform selective scanning, and Hive 3.0+ supports materialized views.
+
+// Practical Modern Example
+
+Suppose the airline data is stored as ORC:
+CREATE TABLE flights_orc (
+    flight_id INT,
+    airline STRING,
+    source STRING,
+    destination STRING,
+    ticket_price DOUBLE
+)
+STORED AS ORC;
+
+
+Then:
+SELECT *
+FROM flights_orc
+WHERE airline = 'IndiGo';
+
+
+ORC supports selective reading and internal row indexes/bloom filters, helping reduce unnecessary data scanning.
+
+// Interview Question
+
+Q: Does modern Hive support the traditional CREATE INDEX feature?
+
+Answer:
+
+No. Traditional Hive indexing was removed in Hive 3.0. In modern Hive, techniques such as partitioning, bucketing, ORC/Parquet columnar storage, predicate pushdown, and materialized views are used for query optimization.
+
+// Very Important for Students
+
+Do not say:
+
+> "Hive uses CREATE INDEX for indexing."
+
+For a Hive 3.1.3 interview, say:
+
+> "Traditional Hive indexes were removed from Hive 3.0. Modern Hive uses partitioning, bucketing, columnar formats such as ORC and Parquet, and other query optimization techniques."
+
+# 8. Storage Formats
+
+Hive supports several storage formats.
+//Important formats:
+FILE
+SEQUENCEFILE
+ORC
+PARQUET
+AVRO
+
+//8.1 FILE
+
+ is simple and easy to inspect.
+
+// Example
+CREATE TABLE flights_ (
+    flight_id INT,
+    airline STRING,
+    ticket_price DOUBLE
+)
+STORED AS FILE;
+
+
+Suitable for simple input and learning, but generally less efficient than columnar formats for large analytical workloads.
+
+# 8.2 ORC
+
+ORC = Optimized Row Columnar
+
+ORC is a columnar storage format designed for efficient Hive analytics.
+
+// Example
+
+
+CREATE TABLE flights_orc (
+    flight_id INT,
+    airline STRING,
+    ticket_price DOUBLE
+)
+STORED AS ORC;
+
+
+//Advantages:
+Compression
+Column pruning
+Predicate pushdown
+Efficient analytical queries
+
+# 8.3 Parquet
+
+Parquet is a columnar storage format widely used in Big Data analytics.
+
+// Example
+CREATE TABLE flights_parquet (
+    flight_id INT,
+    airline STRING,
+    ticket_price DOUBLE
+)
+STORED AS PARQUET;
+// Interview Question
+
+Q: Why are ORC and Parquet preferred for analytical workloads?
+
+Answer:
+
+They are columnar formats that support efficient storage, compression, and reading only the required columns, which can reduce I/O during analytical queries.
+
+# 9. Importing Data
+
+Hive can load data from the local filesystem or HDFS.
+//Suppose we have:
+/home/sari/flights.csv
+
+//Use:
+LOAD DATA LOCAL INPATH '/home/sari/flights.csv'
+INTO TABLE flights;
+
+//Here:
+LOCAL
+  ↓
+Local Linux filesystem
+
+
+// Loading Data from HDFS
+
+Suppose the file is:
+/airline/input/flights.csv
+//Use:
+LOAD DATA INPATH '/airline/input/flights.csv'
+INTO TABLE flights;
+//Here:
+No LOCAL
+     ↓
+HDFS path
+
+
+// Interview Question
+
+Q: What is the difference between LOCAL and non-LOCAL in LOAD DATA?
+
+Answer:
+
+`LOCAL` indicates that the source file is on the local filesystem. Without `LOCAL`, the source path refers to a Hadoop/HDFS location.
+
+
+
+# 10. Importing Data into a Partition
+
+For a partitioned table:
+LOAD DATA INPATH '/airline/input/flights.csv'
+INTO TABLE flights_partitioned
+PARTITION (flight_date='2026-10-01');
+The data is loaded into the specified partition.
+
+# 11. Altering Tables
+
+`ALTER TABLE` is used to modify an existing Hive table.
+
+// Rename Table
+
+
+ALTER TABLE flights
+RENAME TO airline_flights;
+
+
+// Add Column
+
+
+ALTER TABLE flights
+ADD COLUMNS (
+    aircraft_type STRING
+);
+
+
+// Add Partition
+
+
+ALTER TABLE flights_partitioned
+ADD PARTITION (flight_date='2026-10-03');
+
+
+// Interview Question
+
+Q: Why do we use ALTER TABLE?
+
+Answer:
+
+`ALTER TABLE` is used to modify table definitions or properties, such as renaming a table, adding columns, or adding partitions.
+
+
+
+# 12. Dropping Tables
+
+//To remove a table:
+DROP TABLE flights;
+
+For a managed table, Hive normally removes the associated table data as well.
+
+//For an external table:
+DROP TABLE flights_external;
+
+Hive normally removes the table metadata while the underlying external data remains.
+
+13. TRUNCATE vs DROP
+
+This is an important interview question.
+
+// TRUNCATE
+
+Removes the data but keeps the table.
+TRUNCATE TABLE flights;
+//Concept:
+Table
+  |
+  +--- Data removed
+  |
+  +--- Table remains
+
+
+// DROP
+
+Removes the table.
+DROP TABLE flights;
+//Concept:
+Table
+  |
+  +--- Metadata removed
+  |
+  +--- Table no longer exists
+
+
+// Interview Question
+
+Q: Difference between DROP and TRUNCATE?
+
+Answer:
+
+`TRUNCATE` removes the rows while retaining the table structure. `DROP TABLE` removes the table itself, including its metadata.
+
+# 14. Complete HiveQL Concept Flow
+
+
+                    HIVEQL
+                       |
+       +---------------+---------------+
+       |               |               |
+   Datatypes       Operators       Functions
+       |               |               |
+       +---------------+---------------+
+                       |
+                     Tables
+                       |
+              +--------+--------+
+              |                 |
+           Managed           External
+              |
+        +-----+-----+
+        |           |
+   Partition     Bucket
+        |
+        v
+  Storage Formats
+        |
+   +----+----+----+
+   |    |    |    |
+   ORC  PARQUET AVRO
+        |
+        v
+  Import Data
+        |
+        v
+ ALTER TABLE
+        |
+        v
+ DROP / TRUNCATE
+
+
+
+
+# 15. Complete Lab Commands
+
+
+SHOW DATABASES;
+
+CREATE DATABASE airline;
+
+USE airline;
+
+CREATE TABLE flights (
+    flight_id INT,
+    airline STRING,
+    source STRING,
+    destination STRING,
+    flight_status STRING,
+    ticket_price DOUBLE,
+    passengers INT
+);
+
+SHOW TABLES;
+
+DESCRIBE flights;
+
+SELECT * FROM flights;
+
+SELECT *
+FROM flights
+WHERE airline = 'IndiGo';
+
+SELECT *
+FROM flights
+WHERE ticket_price > 5000;
+
+SELECT COUNT(*)
+FROM flights;
+
+SELECT SUM(passengers)
+FROM flights;
+
+SELECT AVG(ticket_price)
+FROM flights;
+
+SELECT MAX(ticket_price)
+FROM flights;
+
+SELECT MIN(ticket_price)
+FROM flights;
+
+SELECT airline, COUNT(*)
+FROM flights
+GROUP BY airline;
+
+SELECT airline, AVG(ticket_price)
+FROM flights
+GROUP BY airline;
+
+SELECT *
+FROM flights
+ORDER BY ticket_price DESC;
+
+SELECT *
+FROM flights
+LIMIT 3;
+
+
+
+
+# 16. Interview Quick Revision
+
+| Concept             | Simple Meaning                                                               
+
+| Hive           | Data warehouse/query system for Big Data                                     
+
+| HiveQL              | SQL-like language used by Hive                                               
+
+| Managed Table       | Hive manages table data and metadata                                         
+
+| External Table     | Hive manages metadata; data is      			externally maintained                         
+| Partition           | Divides data based on column values                                          
+
+| Bucket              | Divides data into fixed buckets using hashing                                
+
+| ORDER BY            | Sorts the final result 
+                                                      
+| WHERE               | Filters records                                                              
+
+| GROUP BY            | Groups records for aggregation                                               
+
+| FILE            | Simple  storage                                                          
+
+| ORC                 | Hive-oriented columnar format                                                
+
+| Parquet             | General-purpose columnar format                                              
+
+| LOAD DATA           | Imports data into a Hive table                                               
+
+| ALTER TABLE         | Modifies table definition/properties                                         
+
+| TRUNCATE            | Removes table data but keeps 				structure                                       
+
+| DROP                | Removes the table                                                            
+
+| Traditional Index   | Removed from Hive 3.0                                                        
+
+| Modern optimization | Partitioning, bucketing, ORC/Parquet, predicate pushdown, materialized views |
+
+
+
+# 17. Most Important Interview Questions
+
+// Q1. What is Hive?
+
+Hive is a data warehouse and SQL-like query system in the Hadoop ecosystem, mainly used for large-scale data analytics.
+
+// Q2. What is HiveQL?
+
+HiveQL is the SQL-like query language used to create, manage, and query Hive tables.
+
+// Q3. Managed vs External Table?
+
+Managed tables have their data and metadata managed by Hive. External tables allow the data to remain at an externally maintained location while Hive manages the metadata.
+
+// Q4. What is partitioning?
+
+Partitioning divides a large dataset into smaller logical sections based on column values.
+
+// Q5. What is bucketing?
+
+Bucketing divides data into a fixed number of buckets using hashing.
+
+// Q6. Partitioning vs Bucketing?
+
+
+Partitioning
+→ Based on values
+→ Number of partitions depends on values
+
+Bucketing
+→ Based on hashing
+→ Fixed number of buckets
+
+
+// Q7. What is ORC?
+
+ORC stands for Optimized Row Columnar. It is a columnar storage format optimized for analytical workloads in Hive.
+
+// Q8. What is Parquet?
+
+Parquet is a columnar storage format widely used for Big Data analytics.
+
+// Q9. What is indexing in Hive?
+
+Traditional Hive indexing was a feature intended to speed up searches on specific columns, but it was removed from Hive 3.0. Modern Hive uses mechanisms such as partitioning, bucketing, ORC/Parquet, predicate pushdown, and materialized views instead.
+
+// Q10. What is LOAD DATA?
+
+`LOAD DATA` loads a file from the local filesystem or HDFS into a Hive table.
+
+// Q11. What is ALTER TABLE?
+
+It modifies an existing Hive table, such as adding columns, renaming the table, or adding partitions.
+
+// Q12. Difference between DROP and TRUNCATE?
+
+`TRUNCATE` removes data while retaining the table. `DROP` removes the table itself.
+
+
+
+# 18. One-Minute Interview Explanation
+
+> "Hive is a data warehouse and SQL-like query system in the Hadoop ecosystem. For example, an airline can store large volumes of flight data in HDFS and use HiveQL to analyze ticket prices, passengers, airlines, routes, and flight status. Hive supports managed and external tables, partitioning, bucketing, and storage formats such as ORC and Parquet. We can use commands such as SELECT, WHERE, GROUP BY, ORDER BY, LOAD DATA, ALTER TABLE, and DROP TABLE for data processing and management. Traditional Hive indexing was removed in Hive 3.0, so in modern Hive we mainly discuss partitioning, bucketing, columnar storage, predicate pushdown, and materialized views for query optimization."
+
+# 19. Key Point for Your Hive 3.1.3 Lab
+
+Your students are using Hive 3.1.3, so teach indexing as:
+
+
+INDEXING
+   |
+   +-- Old Hive feature
+   |
+   +-- Removed from Hive 3.0
+   |
+   +-- Know the concept for interviews
+   |
+   +-- Do NOT execute CREATE INDEX in Hive 3.1.3
+   |
+   +-- Use/understand:
+          Partitioning
+          Bucketing
+          ORC
+          Parquet
+          Predicate Pushdown
+          Materialized Views
+

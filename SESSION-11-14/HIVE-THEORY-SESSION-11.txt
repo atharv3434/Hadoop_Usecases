@@ -1,0 +1,1149 @@
+# Introduction to Hive — Basic Theory
+
+// 1. What is Hive?
+Hive allows users to query large datasets using HiveQL (Hive Query Language), which is similar to SQL.
+
+// Simple definition
+
+> Hive is a data warehouse tool in the Hadoop ecosystem that allows users to query and analyze large datasets using SQL-like commands.
+
+Instead of writing complex Java MapReduce programs, we can write:
+
+//sql
+SELECT department, COUNT(*)
+FROM employees
+GROUP BY department;
+//
+
+Hive converts the query into an execution plan and processes the data using its execution engine.
+
+
+# 2. Why Was Hive Introduced?
+
+Before Hive, Hadoop users generally needed to write MapReduce programs to analyze data.
+
+For example, if we wanted to find total sales by department, we would need:
+
+//text
+Input
+  ↓
+Mapper
+  ↓
+Shuffle
+  ↓
+Reducer
+  ↓
+Output
+//
+
+This required programming knowledge.
+
+Hive simplified this by allowing users to write SQL-like queries:
+
+//sql
+SELECT department, SUM(amount)
+FROM sales
+GROUP BY department;
+//
+
+So the basic idea is:
+
+//text
+Traditional Hadoop approach
+        ↓
+Java MapReduce programming
+
+
+
+Hive approach
+        ↓
+SQL-like HiveQL
+//
+
+# 3. Evolution of Hive
+
+Hive was originally developed at Facebook to handle large amounts of data stored in Hadoop.
+
+The main problem was that many data analysts knew SQL but did not necessarily know Java MapReduce programming.
+
+Hive provided a SQL-like interface over Hadoop.
+
+// Evolution
+
+//text
+Traditional RDBMS
+       ↓
+Large volumes of data
+       ↓
+Hadoop + HDFS
+       ↓
+MapReduce programming
+       ↓
+Hive
+       ↓
+SQL-like Big Data analytics
+//
+
+Hive later evolved to support different execution engines and modern data formats.
+
+# 4. Purpose of Hive
+
+The main purposes of Hive are:
+
+// 1. Data Warehousing
+
+Hive can be used to organize and analyze large datasets.
+
+// 2. Data Analysis
+
+It allows users to perform:
+
+//text
+SELECT
+WHERE
+GROUP BY
+JOIN
+ORDER BY
+COUNT
+SUM
+AVG
+MIN
+MAX
+//
+
+// 3. Query Large Datasets
+
+Hive is designed for datasets that can be very large and distributed across Hadoop storage.
+
+// 4. ETL Processing
+
+Hive can be used for:
+
+//text
+Extract
+   ↓
+Load
+   ↓
+Transform
+   ↓
+Analyze
+//
+
+For example:
+
+//text
+Raw CSV
+   ↓
+HDFS
+   ↓
+Hive External Table
+   ↓
+Transformation
+   ↓
+Analytics Table
+//
+
+
+# 5. Hive as a Data Warehouse
+
+A data warehouse is a system used to store and analyze large amounts of structured or semi-structured data for reporting and analysis.
+
+Hive provides data warehouse capabilities on top of Hadoop.
+
+Example:
+
+//text
+                  Hive
+                   |
+        +----------+----------+
+        |          |          |
+     Tables      Queries    Analytics
+        |
+        v
+      HDFS
+//
+
+Suppose a company has:
+
+//text
+employees.csv
+attendance.csv
+salary.csv
+department.csv
+//
+
+These files can be stored in HDFS and represented through Hive tables.
+
+Then users can run:
+
+//sql
+SELECT department, COUNT(*)
+FROM employees
+GROUP BY department;
+//
+
+---
+
+# 6. Important Point: Hive Is Not a Traditional Database
+This is very important for interviews.
+Hive looks similar to a database because it has:
+
+//text
+Tables
+Columns
+Rows
+SQL-like queries
+//
+
+But Hive is primarily a data warehousing and analytics system, not a traditional OLTP database.
+
+For example:
+
+// MySQL
+
+Usually used for:
+
+//text
+Transactions
+INSERT
+UPDATE
+DELETE
+Real-time applications
+//
+
+// Hive
+
+Usually used for:
+
+//text
+Large-scale analytics
+Batch processing
+Reporting
+Data warehousing
+ETL/ELT
+//
+
+---
+
+# 7. Hive Architecture
+
+Basic Hive architecture:
+
+//text
+             User
+               |
+               v
+        HiveQL Query
+               |
+               v
+          Hive Driver
+               |
+               v
+          Compiler
+               |
+               v
+        Query Optimizer
+               |
+               v
+       Execution Engine
+               |
+               v
+             HDFS
+               |
+               v
+             Data
+
+8. Components of Hive Architecture
+
+// 8.1 Hive Client
+
+The client is the interface through which the user submits Hive queries.
+
+Examples:
+
+//text
+Hive CLI
+Beeline
+Applications using JDBC
+
+8.2 Hive Driver
+
+The Driver manages the complete lifecycle of a Hive query.
+
+It:
+
+* Receives the query
+* Manages the query execution
+* Coordinates different Hive components
+* Returns the result to the user
+
+Simple flow:
+
+//text
+User
+ ↓
+Driver
+ ↓
+Query processing
+ ↓
+Result
+//
+
+9. Hive Compiler
+
+The Compiler analyzes the HiveQL query.
+
+For example:
+
+//sql
+SELECT department, COUNT(*)
+FROM employees
+GROUP BY department;
+//
+
+The compiler analyzes:
+
+//text
+SELECT
+FROM
+GROUP BY
+//
+
+and creates an execution plan.
+
+
+10. Query Optimizer
+
+The optimizer tries to create an efficient execution plan.
+
+For example, it can optimize:
+
+//text
+Data reading
+Joins
+Filters
+Partitions
+Aggregations
+//
+
+The objective is:
+
+> Process the query efficiently while reducing unnecessary data processing.
+
+
+11. Execution Engine
+
+The Execution Engine executes the generated query plan.
+
+Depending on the Hive version/configuration, Hive can use execution engines such as:
+
+//text
+MapReduce
+Tez
+Spark
+//
+
+For modern Hive deployments, Tez is commonly used for Hive query execution.
+
+
+12. Metastore
+
+The Hive Metastore is one of the most important Hive components.
+It stores metadata about Hive tables.
+
+For example, suppose we create:
+
+//sql
+CREATE TABLE employee (
+    id INT,
+    name STRING,
+    department STRING
+);
+
+
+//
+The actual data may be stored in HDFS.
+The Metastore stores information such as:
+
+//text
+Table name
+Column names
+Column data types
+Database name
+Partition information
+Location of data
+File format
+
+
+
+// Important distinction
+
+//text
+Actual data
+   ↓
+HDFS
+
+
+
+Metadata
+   ↓
+Hive Metastore
+//
+
+
+
+
+13. HDFS and Hive
+
+Hive does not necessarily store the actual large dataset inside the Metastore.
+
+Instead:
+
+//text
+Hive Table
+     |
+     +------ Metadata → Metastore
+     |
+     +------ Data → HDFS
+
+
+
+//For example:
+
+//text
+Hive table: employees
+
+Metastore:
+    columns = id, name, department
+    location = /user/hive/warehouse/employees
+
+HDFS:
+    /user/hive/warehouse/employees/
+
+
+14. Hive Architecture 
+
+                   USER
+                     |
+                     v
+                HiveQL Query
+                     |
+                     v
+                  DRIVER
+                     |
+                     v
+                 COMPILER
+                     |
+                     v
+               OPTIMIZER
+                     |
+                     v
+             EXECUTION ENGINE
+                     |
+                     v
+                   HDFS
+                     |
+                     v
+                DATA FILES
+
+
+              +----------------+
+              |    METASTORE   |
+              |                |
+              | Table Metadata |
+              | Column Metadata|
+              | Partitions     |
+              | Locations      |
+              +----------------+
+
+
+
+15. Hive Installation — Basic Steps
+
+For your Hadoop lab, Hive is installed after Hadoop/HDFS is configured.
+
+Basic installation flow:
+
+//text
+Install Java
+    ↓
+Install Hadoop
+    ↓
+Configure HDFS
+    ↓
+Start Hadoop
+    ↓
+Download Hive
+    ↓
+Extract Hive
+    ↓
+Set HIVE_HOME
+    ↓
+Configure hive-site.xml
+    ↓
+Initialize Metastore
+    ↓
+Start Hive/Beeline
+//
+
+You currently have Hive 3.1.3 installed in:
+
+//text
+/usr/local/hive
+//
+
+You can verify:
+
+//bash
+hive --version
+//
+
+---
+
+# 16. Basic Hive Environment Variables
+
+Typical configuration:
+
+//bash
+export HIVE_HOME=/usr/local/hive
+//
+
+Add Hive to PATH:
+
+//bash
+export PATH=$PATH:$HIVE_HOME/bin
+//
+
+Then:
+
+//bash
+source ~/.bashrc
+//
+
+Verify:
+
+//bash
+which hive
+//
+
+and:
+
+//bash
+hive --version
+//
+
+---
+
+# 17. Hive vs Traditional Database
+
+This is an important exam question.
+
+| Feature        | Traditional Database   | Hive                                        
+
+| Main purpose   | Transaction processing |Data analytics                              
+
+| Data size      | Usually small to large | Very large datasets                         
+
+| Processing | OLTP/OLAP depending on DB |  analytical/batch                     
+
+| Query language | SQL                    | HiveQL                                      
+
+| Storage     | Database-managed storage |  HDFS/object storage                
+
+| Schema    | Usually schema-on-write   |schema-on-read                     
+
+| Transactions|Strong OLTP support |Limited/modern transactional 						features exist |
+| Latency        | Low                  | Generally higher                            
+
+| Scalability    | Primarily scale-up/cluster depending on DB | 					Distributed scale-out                       
+
+|Typical use| Banking transactions, applications| 						Big Data analytics, reporting               
+
+| Programming    | SQL                     | HiveQL                                      
+
+| Data formats  |DB-specific storage| CSV, ORC, Parquet, text|           
+
+
+
+# 18. OLTP vs Hive
+// OLTP
+
+Online Transaction Processing
+
+Example:
+
+//text
+Bank account transfer
+ATM transaction
+Online order
+
+Typical operations:
+
+//sql
+INSERT
+UPDATE
+DELETE
+//
+
+Need:
+
+//text
+Fast response
+High concurrency
+Transaction consistency
+
+
+
+// Hive
+
+Hive is primarily used for:
+
+//text
+Large-scale analytics
+Reporting
+Data warehousing
+ETL/ELT
+Batch processing
+
+
+//Example:
+//sql
+SELECT department, AVG(salary)
+FROM employees
+GROUP BY department;
+
+
+
+19. HiveQL
+
+HiveQL stands for Hive Query Language.
+It is SQL-like and is used to interact with Hive tables.
+
+//Example:
+
+//sql
+SHOW DATABASES;
+
+
+//Create database:
+
+//sql
+CREATE DATABASE company;
+
+
+//Use database:
+
+//sql
+USE company;
+
+
+//Create table:
+//sql
+CREATE TABLE employees (
+    id INT,
+    name STRING,
+    department STRING,
+    salary DOUBLE
+);
+//
+
+
+
+20. Basic Hive Data Types
+
+# Hive Numeric Data Types — Byte Size
+
+| Hive Data Type |  Size        | Range         | Example  |
+
+| TINYINT 	 | 1 byte	| -128 to 127    | 25     |
+| SMALLINT     |  2 bytes       | -32,768-32,767 |2500     |
+| INT          |  4 bytes 	| -2³¹ to 2³¹-1  |100000
+| BIGINT       |  8 bytes     | -2⁶³ to 2⁶³-1  |9876543210 |
+| FLOAT        |  4 bytes     | floating point | 25.75      
+| DOUBLE       |  8 bytes | Double-precision floating point | 						25.758934  |
+| DECIMAL(p,s) | Variable | Exact decimal precision|99999.99   |
+
+
+//Important: DECIMAL
+
+DECIMAL does not have one fixed byte size like INT or DOUBLE.
+
+It is defined using:
+DECIMAL(precision, scale)
+
+//For example:
+salary DECIMAL(10,2)
+
+
+//means:
+
+* 10 → total number of digits
+* 2 → digits after the decimal point
+* Maximum value is approximately 99999999.99
+
+The storage size of DECIMAL depends on the precision and the underlying storage format.
+
+
+TINYINT    → 1 byte
+SMALLINT   → 2 bytes
+INT        → 4 bytes
+BIGINT     → 8 bytes
+
+FLOAT      → 4 bytes
+DOUBLE     → 8 bytes
+
+DECIMAL    → Variable
+
+Note point: Don't write a fixed byte size for Hive DECIMAL; write variable, depending on precision/storage representation.
+
+//
+
+Example:
+salary DOUBLE
+
+// String
+STRING
+VARCHAR
+CHAR
+//
+
+Example:
+
+//sql
+name STRING
+
+
+// Date and Time
+DATE
+TIMESTAMP
+
+// Boolean
+BOOLEAN
+//Example:
+
+//sql
+active BOOLEAN
+
+
+# 21. Basic Hive Commands
+
+// Show databases
+
+//sql
+SHOW DATABASES;
+//
+
+---
+
+// Create database
+
+//sql
+CREATE DATABASE company;
+
+
+// Use database
+
+//sql
+USE company;
+
+
+// Show tables
+
+//sql
+SHOW TABLES;
+
+
+
+// Describe table
+//sql
+DESCRIBE employees;
+
+or:
+
+//sql
+DESC employees;
+
+
+
+22. Create Table
+
+Example:
+
+//sql
+CREATE TABLE employees (
+    employee_id INT,
+    employee_name STRING,
+    department STRING,
+    salary DOUBLE
+);
+
+
+//Check:
+
+//sql
+SHOW TABLES;
+
+
+
+23. Insert Data
+
+//sql
+INSERT INTO employees VALUES
+(101, 'Rahul', 'IT', 50000),
+(102, 'Priya', 'HR', 45000),
+(103, 'Anita', 'Finance', 60000);
+
+
+
+24. Select Data
+
+//sql
+SELECT * FROM employees;
+
+
+Select particular columns:
+
+//sql
+SELECT employee_name, salary
+FROM employees;
+
+
+25. WHERE
+
+Used to filter records.
+
+//sql
+SELECT *
+FROM employees
+WHERE department = 'IT';
+
+
+//Another example:
+
+//sql
+SELECT *
+FROM employees
+WHERE salary > 50000;
+
+
+26. GROUP BY
+Used to group records.
+
+//sql
+SELECT department, COUNT(*)
+FROM employees
+GROUP BY department;
+
+
+//Example result:
+
+//text
+Finance    1
+HR         1
+IT         1
+
+
+
+27. Aggregate Functions
+
+Hive supports common aggregate functions:
+
+//text
+COUNT()
+SUM()
+AVG()
+MIN()
+MAX()
+
+
+//Example:
+
+//sql
+SELECT AVG(salary)
+FROM employees;
+
+
+//Total salary:
+
+//sql
+SELECT SUM(salary)
+FROM employees;
+
+
+//Maximum salary:
+
+//sql
+SELECT MAX(salary)
+FROM employees;
+
+
+28. ORDER BY
+
+Sort the result.
+
+//sql
+SELECT *
+FROM employees
+ORDER BY salary;
+
+
+//Descending:
+
+//sql
+SELECT *
+FROM employees
+ORDER BY salary DESC;
+
+
+29. LIMIT
+
+Return only a specific number of rows.
+
+//sql
+SELECT *
+FROM employees
+LIMIT 5;
+
+
+30. Hive Table Types
+Two important types are:
+
+//text
+1. Managed Table
+2. External Table
+
+// Managed Table
+
+Hive manages both:
+
+//text
+Metadata
++
+Data
+
+
+//Example:
+
+//sql
+CREATE TABLE employees (
+    id INT,
+    name STRING
+);
+
+When the managed table is dropped, Hive normally removes the associated table data as well.
+
+
+
+// External Table
+
+Hive manages the metadata, while the data remains at an externally specified location.
+
+Example:
+
+//sql
+CREATE EXTERNAL TABLE employees (
+    id INT,
+    name STRING
+)
+LOCATION '/company/employees';
+
+//Dropping the external table generally removes the Hive metadata but does not delete the underlying data.
+
+
+
+31. Schema-on-Read
+
+This is an important Hive concept.
+
+In many traditional databases:
+
+//text
+Schema
+ ↓
+Store data
+
+//This is commonly called:
+
+//text
+Schema-on-Write
+
+//In Hive:
+
+//text
+Raw data
+ ↓
+Store data
+ ↓
+Define/interpret schema when reading
+
+//This is commonly called:
+
+//text
+Schema-on-Read
+
+//Example:
+
+//text
+CSV file
+   ↓
+HDFS
+   ↓
+Hive External Table
+   ↓
+Hive interprets columns
+   ↓
+Query
+//
+
+
+
+32. Hive and Hadoop Relationship
+
+Remember this simple relationship:
+
+//text
+                 HADOOP ECOSYSTEM
+
+       +-----------------------------+
+       |                             |
+       |            HIVE             |
+       |       Data Warehousing      |
+       |                             |
+       +--------------+--------------+
+                      |
+                      v
+                    HDFS
+                      |
+                      v
+               Distributed Data
+//Hive is not HDFS.
+
+// HDFS
+
+Stores data.
+
+// Hive
+
+Provides a data warehouse/query layer over the data.
+
+
+
+
+33. Hive vs MapReduce
+
+| MapReduce            | Hive                         |
+
+| Programming model    | Data warehouse/query tool    |
+| Java/Python programs | HiveQL                       |
+| Mapper required      | Not directly written by user |
+| Reducer required     | Not directly written by user |
+| More programming     | Less programming             |
+| Low-level processing | Higher-level abstraction     |
+| Batch processing     | Data analytics/warehousing   |
+
+Example:
+
+// MapReduce
+
+You write:
+
+//text
+mapper.py
+reducer.py
+
+
+// Hive
+
+You write:
+
+//sql
+SELECT department, COUNT(*)
+FROM employees
+GROUP BY department;
+
+Hive handles the underlying execution.
+
+---
+
+# 34. Real-Time Example
+
+Consider a social media platform.
+
+It generates:
+
+//text
+User posts
+Likes
+Comments
+Shares
+Views
+//
+
+These records can be stored in:
+
+//text
+HDFS
+//
+
+Hive can then create an external table:
+
+//sql
+CREATE EXTERNAL TABLE social_media (
+    post_id STRING,
+    user_id STRING,
+    likes INT,
+    comments INT,
+    shares INT
+)
+LOCATION '/social_media/raw';
+//
+
+Then analytics:
+
+//sql
+SELECT
+    user_id,
+    SUM(likes) AS total_likes
+FROM social_media
+GROUP BY user_id;
+//
+
+Result:
+
+//text
+user_id    total_likes
+U101       250
+U102       430
+U103       125
+//
+
+This is where Hive is useful: large-scale analytical queries without manually writing MapReduce programs.
+
+---
+
+# 35. Hive Key Points for Exam
+
+Remember these 10 points:
+
+1. Hive is a data warehouse tool in the Hadoop ecosystem.
+2. It was originally developed at Facebook.
+3. It provides a SQL-like language called HiveQL.
+4. It is primarily used for large-scale data analysis.
+5. Hive commonly works with data stored in HDFS.
+6. The Hive Metastore stores metadata, not the main dataset.
+7. Hive supports managed and external tables.
+8. Hive commonly follows a schema-on-read approach.
+9. Hive hides much of the complexity of distributed processing from the user.
+10. Hive is primarily for analytics/data warehousing, not traditional OLTP transactions.
+
+---
+
+# 36. One-Minute Interview Explanation
+
+If an interviewer asks:
+
+"What is Hive?"
+
+You can answer:
+
+> Apache Hive is a data warehouse and query system in the Hadoop ecosystem. It was originally developed at Facebook to make large-scale Hadoop data analysis easier for users familiar with SQL. Hive provides HiveQL, an SQL-like language, and allows users to create tables and perform operations such as filtering, joins, grouping, and aggregation on large datasets. The actual data is commonly stored in HDFS, while metadata such as table names, columns, data types, and locations is maintained in the Hive Metastore. Hive is mainly used for batch analytics, data warehousing, and ETL/ELT rather than low-latency OLTP applications.

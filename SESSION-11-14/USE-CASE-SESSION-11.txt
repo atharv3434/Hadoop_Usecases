@@ -1,0 +1,414 @@
+//Airline Flight Analytics
+
+-demonstrates Hive's role in handling large datasets.
+
+# HiveQL Use Case: Airline Flight Analytics
+
+Travel and Aviation Sector
+
+//Problem Statement
+
+An airline company stores large amounts of flight information such as:
+
+* Flight ID
+* Airline
+* Source
+* Destination
+* Flight status
+* Ticket price
+* Number of passengers
+
+The company wants to use Hive to analyze this data and generate business reports.
+
+Using HiveQL, we will:
+
+1. Store flight data in a Hive table.
+2. Find all flights.
+3. Find flights for a particular airline.
+4. Find cancelled flights.
+5. Calculate average ticket price.
+6. Find the number of flights operated by each airline.
+7. Find the average ticket price by airline.
+8. Find the highest ticket price.
+
+# 3. Technology Stack
+
+Hadoop
+   |
+   +-- HDFS
+   |
+   +-- Hive
+        |
+        +-- HiveQL
+
+# 4. Connect to Hive
+
+First check Hadoop:
+jps
+```
+
+//Expected:
+NameNode
+DataNode
+SecondaryNameNode
+ResourceManager
+NodeManager
+```
+
+//Start Hive:
+hive
+
+
+# 5. Create Database
+
+//
+CREATE DATABASE airline;
+
+
+Check:
+//
+SHOW DATABASES;
+```
+
+Use the database:
+
+//
+USE airline;
+
+
+# 6. Create Flight Table
+
+//
+CREATE TABLE flights (
+    flight_id INT,
+    airline STRING,
+    source STRING,
+    destination STRING,
+    flight_status STRING,
+    ticket_price DOUBLE,
+    passengers INT
+);
+
+Check:
+
+//
+SHOW TABLES;
+
+
+//Check structure:
+DESCRIBE flights;
+```
+
+---
+
+# 7. Insert Sample Data
+
+//
+INSERT INTO flights VALUES
+(1001, 'IndiGo', 'Bangalore', 'Delhi', 'On-Time', 5500.00, 180),
+(1002, 'Air India', 'Mumbai', 'Delhi', 'Delayed', 6200.00, 150),
+(1003, 'Vistara', 'Bangalore', 'Mumbai', 'On-Time', 4800.00, 140),
+(1004, 'IndiGo', 'Delhi', 'Chennai', 'Cancelled', 4500.00, 0),
+(1005, 'Air India', 'Bangalore', 'Kolkata', 'On-Time', 5800.00, 160),
+(1006, 'Vistara', 'Mumbai', 'Delhi', 'Delayed', 7000.00, 145),
+(1007, 'IndiGo', 'Chennai', 'Bangalore', 'On-Time', 4200.00, 175),
+(1008, 'Air India', 'Delhi', 'Bangalore', 'On-Time', 6100.00, 155);
+
+
+# 8. Display All Flights
+
+//
+SELECT * FROM flights;
+
+//Expected:
+1001  IndiGo     Bangalore  Delhi      On-Time    5500  180
+1002  Air India  Mumbai     Delhi      Delayed    6200  150
+1003  Vistara    Bangalore  Mumbai     On-Time    4800  140
+1004  IndiGo     Delhi      Chennai    Cancelled  4500  0
+1005  Air India  Bangalore  Kolkata    On-Time    5800  160
+1006  Vistara    Mumbai     Delhi      Delayed    7000  145
+1007  IndiGo     Chennai    Bangalore  On-Time    4200  175
+1008  Air India  Delhi      Bangalore  On-Time    6100  155
+
+
+In:
+//sql
+SELECT *
+FROM flights;
+
+`*` means:
+
+> Select all columns from the table.
+
+//For example, if `flights` has:
+
+flight_id
+airline
+source
+destination
+ticket_price
+passengers
+
+
+then:
+SELECT * FROM flights;
+
+
+returns all six columns
+
+//Is `SELECT *` good practice?
+For learning, testing, and quick exploration: Yes.
+
+In production/interview discussions: Explicitly selecting required columns is generally preferred:
+//
+SELECT flight_id, airline, ticket_price
+FROM flights;
+
+
+//Why?
+
+* Makes the query clearer
+* Avoids retrieving unnecessary columns
+* Can reduce data transfer
+* Makes queries less sensitive to schema changes
+//Interview question
+
+Q: What is the difference between `SELECT *` and selecting specific columns?
+
+SELECT * retrieves all columns from a table, whereas specifying column names retrieves only the required columns. `SELECT *` is convenient for exploration, but selecting specific columns is generally preferred in production because it improves clarity and avoids unnecessary data retrieval.
+//
+SELECT * 
+     ↓
+Useful for learning/testing/exploration
+
+
+SELECT col1, col2
+     ↓
+Preferred when only specific data is required
+
+
+# 9. Select Specific Columns
+
+Find airline and ticket price:
+
+//
+SELECT airline, ticket_price
+FROM flights;
+
+
+# 10. WHERE Condition
+
+Find all flights operated by IndiGo:
+
+//
+SELECT *FROM flights WHERE airline = 'IndiGo';
+
+
+# 11. Find Delayed Flights
+
+//
+SELECT flight_id, airline, source, destination FROM flights WHERE flight_status = 'Delayed';
+
+//Expected:
+1002  Air India  Mumbai  Delhi
+1006  Vistara    Mumbai  Delhi
+
+
+12. Find Cancelled Flights
+
+//
+SELECT *FROM flights WHERE flight_status = 'Cancelled';
+
+
+13. COUNT
+Find total number of flights:
+//
+SELECT COUNT(*) FROM flights;
+
+//Expected:
+8
+
+# 14. GROUP BY
+
+Find the number of flights operated by each airline:
+
+//
+SELECT airline, COUNT(*)
+FROM flights
+GROUP BY airline;
+```
+
+//Expected:
+Air India   3
+IndiGo      3
+Vistara     2
+
+
+This is a very common Hive interview concept:
+
+GROUP BY
+   +
+COUNT()
+
+
+# 15. Average Ticket Price
+
+//
+SELECT AVG(ticket_price)
+FROM flights;
+```
+
+This gives the average ticket price across all flights.
+
+
+16. Average Ticket Price by Airline
+
+//
+SELECT
+    airline,
+    AVG(ticket_price)
+FROM flights
+GROUP BY airline;
+
+This is more useful as a business analytics query.
+
+
+# 17. Highest Ticket Price
+
+//
+SELECT MAX(ticket_price)
+FROM flights;
+
+
+//Expected:
+7000
+
+# 18. Lowest Ticket Price
+
+//
+SELECT MIN(ticket_price)
+FROM flights;
+
+//Expected:
+4200
+
+19. Total Passengers
+
+//
+SELECT SUM(passengers)
+FROM flights;
+
+
+This calculates the total number of passengers across the records.
+
+20. Flights with Ticket Price Greater Than 6000
+
+//
+SELECT flight_id, airline,ticket_price FROM flights WHERE ticket_price > 6000;
+
+21. ORDER BY
+
+Display flights from highest ticket price to lowest:
+
+//
+SELECT flight_id, airline, ticket_price FROM flights ORDER BY ticket_price DESC;
+
+22. LIMIT
+
+Display only the first 3 flights:
+
+//
+SELECT *FROM flights LIMIT 3;
+
+23. Business Analytics Example:
+Find the total passengers handled by each airline:
+
+//
+SELECT airline, SUM(passengers) FROM flights GROUP BY airline;
+
+
+This demonstrates a realistic business requirement:
+
+> The airline management wants to compare passenger volume across different airlines.
+
+# 24. Complete Hive Architecture for This Use Case
+
+              Flight Data
+                  |
+                  v
+              HDFS
+                  |
+                  v
+             Hive Table
+               flights
+                  |
+                  v
+             HiveQL Query
+                  |
+                  v
+                Driver
+                  |
+                  v
+               Compiler
+                  |
+                  v
+              Optimizer
+                  |
+                  v
+          Execution Engine
+                  |
+                  v
+                HDFS
+                  |
+                  v
+               Results
+
+
+//The important interview point is:
+Actual Flight Data
+        ↓
+       HDFS
+
+Table Metadata
+        ↓
+Hive Metastore
+
+Query
+        ↓
+HiveQL
+
+
+25. Why Hive for This Use Case?
+
+An airline can generate millions of flight records over time.
+
+//For example:
+Flight bookings
+Flight schedules
+Passenger records
+Flight status
+Ticket prices
+Routes
+
+Instead of manually writing MapReduce programs for every report, analysts can use HiveQL:
+
+//
+SELECT airline, COUNT(*)
+FROM flights
+GROUP BY airline;
+```
+
+Hive provides a SQL-like interface while the underlying data can be distributed across Hadoop storage.
+
+26. Interview Explanation
+
+If the interviewer asks:
+"Give me a real-world Hive use case."
+
+A fresher can say:
+
+> "One example is the airline and travel sector. An airline can store large volumes of flight and booking data in HDFS. Hive can create tables over this data and provide HiveQL for analytics such as flight counts by airline, average ticket prices, passenger volume, delayed flights, and route analysis. Hive is useful because analysts can use SQL-like queries instead of writing MapReduce programs for every analytical requirement."
+
+
+> Install and connect to Hive and execute basic HiveQL queries on an Airline Flight Analytics dataset. Create an airline database and flight table, insert sample records, and perform SELECT, WHERE, COUNT, SUM, AVG, MIN, MAX, GROUP BY, ORDER BY, and LIMIT operations.
+
